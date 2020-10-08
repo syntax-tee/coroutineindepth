@@ -7,4 +7,6 @@ interface MoviesPresenter {
   fun setView(moviesView: MoviesView)
 
   fun getData()
+
+  fun stop()
 }
