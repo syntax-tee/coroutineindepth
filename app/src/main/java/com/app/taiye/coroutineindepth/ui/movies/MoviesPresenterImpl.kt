@@ -1,11 +1,15 @@
 package com.app.taiye.coroutineindepth.ui.movies
 
 import com.app.taiye.coroutineindepth.domain.repository.MovieRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Handles the business logic calls, reacting to UI events.
  */
-class MoviesPresenterImpl(private val movieRepository: MovieRepository) : MoviesPresenter {
+class MoviesPresenterImpl(private val movieRepository: MovieRepository) : MoviesPresenter, CoroutineScope {
 
     private lateinit var moviesView: MoviesView
 
@@ -14,13 +18,20 @@ class MoviesPresenterImpl(private val movieRepository: MovieRepository) : Movies
     }
 
     override fun getData() {
-        movieRepository.getMovies(
-            onMoviesReceived = { movies -> moviesView.showMovies(movies) },
-            onError = { throwable -> handleError(throwable) }
-        )
+        launch {
+            val result = movieRepository.getMovies()
+            if (result.value != null && result.value.isNotEmpty()) {
+                moviesView.showMovies(result.value)
+            } else if (result.throwable != null) {
+                handleError(result.throwable)
+            }
+        }
     }
 
     private fun handleError(throwable: Throwable) {
         moviesView.showError(throwable)
     }
+
+    override val coroutineContext: CoroutineContext
+        get() = Dispatchers.Main
 }

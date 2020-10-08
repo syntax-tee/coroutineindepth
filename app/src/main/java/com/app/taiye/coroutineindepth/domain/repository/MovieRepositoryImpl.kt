@@ -5,6 +5,9 @@ import com.app.taiye.coroutineindepth.data.database.MovieDao
 import com.app.taiye.coroutineindepth.di.API_KEY
 import com.app.taiye.coroutineindepth.data.model.Movie
 import com.app.taiye.coroutineindepth.data.model.MoviesResponse
+import com.app.taiye.coroutineindepth.data.model.Result
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -18,33 +21,23 @@ class MovieRepositoryImpl(
   private val movieDao: MovieDao
 ) : MovieRepository {
 
-  override fun getMovies(
-    onMoviesReceived: (List<Movie>) -> Unit,
-    onError: (Throwable) -> Unit
-  ) {
-    movieApiService.getMovies(API_KEY).enqueue(object : Callback<MoviesResponse> {
-      override fun onFailure(call: Call<MoviesResponse>, throwable: Throwable) {
-        val savedMovies = movieDao.getSavedMovies()
+  override suspend fun getMovies(): Result<List<Movie>> = withContext(Dispatchers.IO){
+    val cachedMovies = movieDao.getSavedMovies()
+     try{
+      val result = movieApiService.getMovies(API_KEY).execute()
+      val moviesResponse = result.body()?.movies
 
-        /**
-         * If there's no internet connection, default to the cached values.
-         * Otherwise propagate the error.
-         * */
-        if (throwable is IOException && savedMovies.isNotEmpty()) {
-          onMoviesReceived(savedMovies)
-        } else {
-          onError(throwable)
-        }
+       if(result.isSuccessful && moviesResponse != null){
+        Result(moviesResponse,null)
+      }else{
+        Result(cachedMovies, null)
       }
-
-      override fun onResponse(call: Call<MoviesResponse>, response: Response<MoviesResponse>) {
-        val movies = response.body()?.movies ?: emptyList()
-
-        if (movies.isNotEmpty()) {
-          movieDao.saveMovies(movies)
-        }
-        onMoviesReceived(movies)
-      }
-    })
+    }catch (error:Throwable){
+         if(error is IOException && cachedMovies.isEmpty()){
+         Result(null, error)
+       }else{
+         Result(cachedMovies, null)
+       }
+    }
   }
 }
