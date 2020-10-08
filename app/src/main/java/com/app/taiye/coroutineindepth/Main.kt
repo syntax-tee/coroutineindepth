@@ -1,8 +1,6 @@
 package com.app.taiye.coroutineindepth
 
 import kotlinx.coroutines.*
-import java.lang.IllegalStateException
-
 
 fun main() {
     val userId = 992
