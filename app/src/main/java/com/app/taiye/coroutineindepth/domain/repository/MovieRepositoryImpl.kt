@@ -1,5 +1,6 @@
 package com.app.taiye.coroutineindepth.domain.repository
 
+import com.app.taiye.coroutineindepth.contextProvider.CoroutineContextProvider
 import com.app.taiye.coroutineindepth.data.api.MovieApiService
 import com.app.taiye.coroutineindepth.data.database.MovieDao
 import com.app.taiye.coroutineindepth.di.API_KEY
@@ -19,10 +20,11 @@ import java.io.IOException
  */
 class MovieRepositoryImpl(
     private val movieApiService: MovieApiService,
-    private val movieDao: MovieDao
+    private val movieDao: MovieDao,
+    private  val contextProvider: CoroutineContextProvider
 ) : MovieRepository {
 
-    override suspend fun getMovies(): Result<List<Movie>> = withContext(Dispatchers.IO) {
+    override suspend fun getMovies(): Result<List<Movie>> = withContext(contextProvider.context()) {
 
         val resultDeferred = async { movieApiService.getMovies(API_KEY).execute() }
         val cachedMoviesDeferred = async { movieDao.getSavedMovies() }
