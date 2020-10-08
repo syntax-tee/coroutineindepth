@@ -7,6 +7,7 @@ import com.app.taiye.coroutineindepth.data.model.Movie
 import com.app.taiye.coroutineindepth.data.model.MoviesResponse
 import com.app.taiye.coroutineindepth.data.model.Result
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Callback
@@ -17,27 +18,33 @@ import java.io.IOException
  * Connects to the end entity, and exposes functionality to the user.
  */
 class MovieRepositoryImpl(
-  private val movieApiService: MovieApiService,
-  private val movieDao: MovieDao
+    private val movieApiService: MovieApiService,
+    private val movieDao: MovieDao
 ) : MovieRepository {
 
-  override suspend fun getMovies(): Result<List<Movie>> = withContext(Dispatchers.IO){
-    val cachedMovies = movieDao.getSavedMovies()
-     try{
-      val result = movieApiService.getMovies(API_KEY).execute()
-      val moviesResponse = result.body()?.movies
+    override suspend fun getMovies(): Result<List<Movie>> = withContext(Dispatchers.IO) {
 
-       if(result.isSuccessful && moviesResponse != null){
-        Result(moviesResponse,null)
-      }else{
-        Result(cachedMovies, null)
-      }
-    }catch (error:Throwable){
-         if(error is IOException && cachedMovies.isEmpty()){
-         Result(null, error)
-       }else{
-         Result(cachedMovies, null)
-       }
+        val resultDeferred = async { movieApiService.getMovies(API_KEY).execute() }
+        val cachedMoviesDeferred = async { movieDao.getSavedMovies() }
+
+        val cachedMovies = cachedMoviesDeferred.await()
+
+        try {
+
+            val result = resultDeferred.await()
+            val moviesResponse = result.body()?.movies
+
+            if (result.isSuccessful && moviesResponse != null) {
+                Result(moviesResponse, null)
+            } else {
+                Result(cachedMovies, null)
+            }
+        } catch (error: Throwable) {
+            if (error is IOException && cachedMovies.isEmpty()) {
+                Result(null, error)
+            } else {
+                Result(cachedMovies, null)
+            }
+        }
     }
-  }
 }
