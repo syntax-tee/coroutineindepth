@@ -11,9 +11,13 @@ import kotlin.coroutines.CoroutineContext
  */
 class MoviesPresenterImpl(private val movieRepository: MovieRepository) : MoviesPresenter, CoroutineScope {
 
-    private var parenjob = SupervisorJob()
+    private var parentjob = SupervisorJob()
 
     private lateinit var moviesView: MoviesView
+
+    private val coroutineExceptionHandler = CoroutineExceptionHandler{ context, throwable ->
+        throwable.printStackTrace()
+    }
 
     override fun setView(moviesView: MoviesView) {
         this.moviesView = moviesView
@@ -37,11 +41,11 @@ class MoviesPresenterImpl(private val movieRepository: MovieRepository) : Movies
     }
 
     override val coroutineContext: CoroutineContext
-        get() = Dispatchers.Main + parenjob
+        get() = Dispatchers.Main + parentjob + coroutineExceptionHandler
 
 
 
     override fun stop() {
-        parenjob.cancelChildren()
+        parentjob.cancelChildren()
     }
 }
